@@ -1,9 +1,9 @@
-import './App.css'
-import React, { useState } from "react";
+import './App.css';
+import React, { useEffect, useState } from "react";
 import TodoInput from "./components/TodoInput";
 import TodoList from "./components/TodoList";
 import TodoFooter from "./components/TodoFooter";
-
+import todoState, { TodoAppState } from "./state-manager/todoState";
 
 export type Todo = {
   id: number;
@@ -12,8 +12,12 @@ export type Todo = {
 };
 
 const App: React.FC = () => {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [state, setState] = useState<TodoAppState>(todoState.getState());
+
+  useEffect(() => {
+    const unsubscribe = todoState.subscribe(setState);
+    return () => unsubscribe();
+  }, []);
 
   const addTodo = (text: string) => {
     const newTodo: Todo = {
@@ -21,41 +25,48 @@ const App: React.FC = () => {
       text,
       completed: false,
     };
-    setTodos((prev) => [...prev, newTodo]);
+    todoState.setState((prev) => ({
+      todos: [...prev.todos, newTodo],
+    }));
   };
 
   const toggleTodo = (id: number) => {
-    setTodos((prev) =>
-      prev.map((todo) =>
+    todoState.setState((prev) => ({
+      todos: prev.todos.map((todo) =>
         todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
+      ),
+    }));
   };
 
   const clearCompleted = () => {
-    setTodos((prev) => prev.filter((todo) => !todo.completed));
+    todoState.setState((prev) => ({
+      todos: prev.todos.filter((todo) => !todo.completed),
+    }));
   };
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === "active") return !todo.completed;
-    if (filter === "completed") return todo.completed;
+  const setFilter = (filter: "all" | "active" | "completed") => {
+    todoState.setState({ filter });
+  };
+
+  const filteredTodos = state.todos.filter((todo) => {
+    if (state.filter === "active") return !todo.completed;
+    if (state.filter === "completed") return todo.completed;
     return true;
   });
 
   return (
     <div className="app">
-      <h1>Todo App for MindBox</h1>
+      <h1>Todo App for Аналит.Прогр.Решения</h1>
       <TodoInput addTodo={addTodo} />
       <TodoList todos={filteredTodos} toggleTodo={toggleTodo} />
       <TodoFooter
-        activeCount={todos.filter((todo) => !todo.completed).length}
+        activeCount={state.todos.filter((todo) => !todo.completed).length}
         setFilter={setFilter}
         clearCompleted={clearCompleted}
-        filter = {filter}
+        filter={state.filter}
       />
     </div>
   );
 };
 
 export default App;
-
